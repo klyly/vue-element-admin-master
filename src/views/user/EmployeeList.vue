@@ -1,9 +1,12 @@
 <template>
   <div>
     <el-row :gutter="20" style="margin-top: 10px">
-      <el-col :span="22" :offset="1">
+      <el-col :span="22" :offset="15">
         <el-button type="primary" plain @click="addVisible = true">添 &nbsp; 加</el-button>
         <el-button type="danger" plain @click="deleteBatch" :disabled="multiple">批量删除</el-button>
+        <el-button :loading="downloadLoading" style="margin:0 0 10px 10px;" type="primary" icon="el-icon-document" @click="handleDownload">
+          导出Excel
+        </el-button>
       </el-col>
     </el-row>
     <el-row :gutter="20" style="margin-top: 5px">
@@ -121,12 +124,14 @@
         </el-form-item>
         <el-form-item label="部门" prop="kwDepartment">
           <el-select v-model="emp.kwDepartment" placeholder="请选择部门">
-            <el-option v-for="(dept,index) in departmentList" :key="index" :label="dept.kwDepartmentname" :value="dept.oid"/>
+            <el-option v-for="(dept,index) in departmentList" :key="index" :label="dept.kwDepartmentname"
+                       :value="dept.oid"/>
           </el-select>
         </el-form-item>
         <el-form-item label="用户类型" prop="kwEmployeetype">
           <el-select v-model="emp.kwEmployeetype" placeholder="请选择类型">
-            <el-option v-for="(empType,index) in employeeTypeList" :key="index" :label="empType.kwEmployeetypename" :value="empType.oid"/>
+            <el-option v-for="(empType,index) in employeeTypeList" :key="index" :label="empType.kwEmployeetypename"
+                       :value="empType.oid"/>
           </el-select>
         </el-form-item>
         <el-form-item label="登记日期" prop="kwBeginDate">
@@ -171,12 +176,14 @@
         </el-form-item>
         <el-form-item label="部门" prop="kwDepartment">
           <el-select v-model="emp.kwDepartment" placeholder="请选择部门">
-            <el-option v-for="(dept,index) in departmentList" :key="index" :label="dept.kwDepartmentname" :value="dept.oid" />
+            <el-option v-for="(dept,index) in departmentList" :key="index" :label="dept.kwDepartmentname"
+                       :value="dept.oid"/>
           </el-select>
         </el-form-item>
         <el-form-item label="用户类型" prop="kwEmployeetype">
-          <el-select  v-model="emp.kwEmployeetype" placeholder="请选择类型">
-            <el-option v-for="(empType,index) in employeeTypeList" :key="index" :label="empType.kwEmployeetypename" :value="empType.oid" />
+          <el-select v-model="emp.kwEmployeetype" placeholder="请选择类型">
+            <el-option v-for="(empType,index) in employeeTypeList" :key="index" :label="empType.kwEmployeetypename"
+                       :value="empType.oid"/>
           </el-select>
         </el-form-item>
         <el-form-item label="登记日期" prop="kwBeginDate">
@@ -210,9 +217,14 @@
 
 <script>
 import axios from 'axios'
+import FilenameOption from './components/FilenameOption'
+import AutoWidthOption from './components/AutoWidthOption'
+import BookTypeOption from './components/BookTypeOption'
 
 export default {
   name: 'EmployeeList',
+  // eslint-disable-next-line vue/no-unused-components
+  components: { FilenameOption, AutoWidthOption, BookTypeOption},
   data() {
     return {
       empList: [],
@@ -248,17 +260,21 @@ export default {
           }
         ],
         kwDepartment: [
-          { required: true, message: '请选择部门', trigger: 'change' }
+          {required: true, message: '请选择部门', trigger: 'change'}
         ],
         kwEmployeetype: [
-          { required: true, message: '请选择用户类型', trigger: 'change' }
+          {required: true, message: '请选择用户类型', trigger: 'change'}
         ]
       },
       multipleSelection: [],
       ids: [],
       // 非多个禁用
       multiple: true,
-      single: true
+      single: true,
+      filename: '用户信息',
+      autoWidth: true,
+      bookType: 'xlsx',
+      downloadLoading: false
     }
   },
   mounted() {
@@ -270,6 +286,32 @@ export default {
     this.getEmployeePage(this.pageNo, this.pageSize)
   },
   methods: {
+    handleDownload() {
+      if (this.multipleSelection.length) {
+        this.downloadLoading = true
+        import('@/vendor/Export2Excel').then(excel => {
+          const tHeader = ['kwEmpid', 'kwName', 'departmentName', 'employeeTypeName', 'kwBeginDate', 'kwEndDate']
+          const filterVal = ['kwEmpid', 'kwName', 'departmentName', 'employeeTypeName', 'kwBeginDate', 'kwEndDate']
+          const list = this.multipleSelection
+          const data = this.formatJson(filterVal, list)
+          excel.export_json_to_excel({
+            header: tHeader,
+            data,
+            filename: this.filename
+          })
+          this.$refs.multipleTable.clearSelection()
+          this.downloadLoading = false
+        })
+      } else {
+        this.$message({
+          message: 'Please select at least one item',
+          type: 'warning'
+        })
+      }
+    },
+    formatJson(filterVal, jsonData) {
+      return jsonData.map(v => filterVal.map(j => v[j]))
+    },
     deleteBatch() {
       const that = this
       console.log(that.ids)
@@ -302,6 +344,7 @@ export default {
     handleSelectChange(val) {
       const that = this
       that.multipleSelection = val
+      // console.log(val)
       // console.log(this.multipleSelection)
       val.forEach(e => that.ids.push(e.kwEmpid))
       // console.log(that.ids)
@@ -334,7 +377,7 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             }
-          }).then(function(response) {
+          }).then(function (response) {
             if (response.data.code === '2000') {
               that.$message({
                 message: '修改成功',
@@ -362,7 +405,7 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             }
-          }).then(function(response) {
+          }).then(function (response) {
             if (response.data.code === '2000') {
               that.$message({
                 message: '添加成功',
@@ -387,7 +430,7 @@ export default {
     },
     getEmployeeTypes() {
       const that = this
-      axios.get('http://localhost:8080/empType/empTypeList').then(function(response) {
+      axios.get('http://localhost:8080/empType/empTypeList').then(function (response) {
         // console.log(response)
         if (response.data.code === '2000') {
           that.employeeTypeList = response.data.data
@@ -398,7 +441,7 @@ export default {
     },
     getDepartments() {
       const that = this
-      axios.get('http://localhost:8080/dept/deptList').then(function(response) {
+      axios.get('http://localhost:8080/dept/deptList').then(function (response) {
         if (response.data.code === '2000') {
           that.departmentList = response.data.data
         } else {
@@ -415,7 +458,7 @@ export default {
           pageNo: pn,
           pageSize: ps
         }
-      }).then(function(resp) {
+      }).then(function (resp) {
         that.empList = resp.data.data.list
         that.total = resp.data.data.total
         that.pages = resp.data.data.pages
@@ -445,7 +488,7 @@ export default {
           params: {
             kwEmpid: row.kwEmpid
           }
-        }).then(function(resp) {
+        }).then(function (resp) {
           // console.log(resp)
           if (resp.data.code === '2000') {
             that.$message({
