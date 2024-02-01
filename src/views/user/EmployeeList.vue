@@ -3,8 +3,15 @@
     <el-row :gutter="20" style="margin-top: 10px">
       <el-col :span="22" :offset="15">
         <el-button type="primary" plain @click="addVisible = true">添 &nbsp; 加</el-button>
-        <el-button type="danger" plain @click="deleteBatch" :disabled="multiple">批量删除</el-button>
-        <el-button :loading="downloadLoading" style="margin:0 0 10px 10px;" type="primary" icon="el-icon-document" @click="handleDownload">
+        <el-button type="danger" plain :disabled="multiple" @click="deleteBatch">批量删除</el-button>
+        <el-button type="primary" plain @click="uploadVisible = true">批量导入</el-button>
+        <el-button
+          :loading="downloadLoading"
+          style="margin:0 0 10px 10px;"
+          type="primary"
+          icon="el-icon-document"
+          @click="handleDownload"
+        >
           导出Excel
         </el-button>
       </el-col>
@@ -12,9 +19,9 @@
     <el-row :gutter="20" style="margin-top: 5px">
       <el-col :span="22" :offset="1">
         <el-table
+          ref="multipleTable"
           :data="empList"
           style="width: 100%"
-          ref="multipleTable"
           @selection-change="handleSelectChange"
         >
           <el-table-column
@@ -109,6 +116,26 @@
         />
       </el-col>
     </el-row>
+    <!--    导入Excel弹出层-->
+    <el-dialog
+      title="批量导入用户"
+      :visible.sync="uploadVisible"
+      width="45%"
+    >
+      <el-upload
+        class="upload-demo"
+        action="#"
+        :before-upload="beforeUpload"
+        :http-request="uploadFile"
+        drag
+        multiple
+        :method="'post'"
+      >
+        <i class="el-icon-upload" />
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <div slot="tip" class="el-upload__tip">只能上传excel文件，且不超过1m</div>
+      </el-upload>
+    </el-dialog>
     <!--    添加用户弹出层-->
     <el-dialog
       title="添加用户"
@@ -117,21 +144,29 @@
     >
       <el-form ref="formRef" :rules="empRules" :model="emp" label-width="80px">
         <el-form-item label="用户卡号" prop="kwEmpid">
-          <el-input v-model="emp.kwEmpid"/>
+          <el-input v-model="emp.kwEmpid" />
         </el-form-item>
         <el-form-item label="姓名" prop="kwName">
-          <el-input v-model="emp.kwName"/>
+          <el-input v-model="emp.kwName" />
         </el-form-item>
         <el-form-item label="部门" prop="kwDepartment">
           <el-select v-model="emp.kwDepartment" placeholder="请选择部门">
-            <el-option v-for="(dept,index) in departmentList" :key="index" :label="dept.kwDepartmentname"
-                       :value="dept.oid"/>
+            <el-option
+              v-for="(dept,index) in departmentList"
+              :key="index"
+              :label="dept.kwDepartmentname"
+              :value="dept.oid"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="用户类型" prop="kwEmployeetype">
           <el-select v-model="emp.kwEmployeetype" placeholder="请选择类型">
-            <el-option v-for="(empType,index) in employeeTypeList" :key="index" :label="empType.kwEmployeetypename"
-                       :value="empType.oid"/>
+            <el-option
+              v-for="(empType,index) in employeeTypeList"
+              :key="index"
+              :label="empType.kwEmployeetypename"
+              :value="empType.oid"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="登记日期" prop="kwBeginDate">
@@ -169,21 +204,29 @@
     >
       <el-form ref="formRef" :rules="empRules" :model="emp" label-width="80px">
         <el-form-item label="用户卡号" prop="kwEmpid">
-          <el-input v-model="emp.kwEmpid" :disabled="true"/>
+          <el-input v-model="emp.kwEmpid" :disabled="true" />
         </el-form-item>
         <el-form-item label="姓名" prop="kwName">
-          <el-input v-model="emp.kwName"/>
+          <el-input v-model="emp.kwName" />
         </el-form-item>
         <el-form-item label="部门" prop="kwDepartment">
           <el-select v-model="emp.kwDepartment" placeholder="请选择部门">
-            <el-option v-for="(dept,index) in departmentList" :key="index" :label="dept.kwDepartmentname"
-                       :value="dept.oid"/>
+            <el-option
+              v-for="(dept,index) in departmentList"
+              :key="index"
+              :label="dept.kwDepartmentname"
+              :value="dept.oid"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="用户类型" prop="kwEmployeetype">
           <el-select v-model="emp.kwEmployeetype" placeholder="请选择类型">
-            <el-option v-for="(empType,index) in employeeTypeList" :key="index" :label="empType.kwEmployeetypename"
-                       :value="empType.oid"/>
+            <el-option
+              v-for="(empType,index) in employeeTypeList"
+              :key="index"
+              :label="empType.kwEmployeetypename"
+              :value="empType.oid"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="登记日期" prop="kwBeginDate">
@@ -220,11 +263,12 @@ import axios from 'axios'
 import FilenameOption from './components/FilenameOption'
 import AutoWidthOption from './components/AutoWidthOption'
 import BookTypeOption from './components/BookTypeOption'
+import UploadExcelComponent from '@/components/UploadExcel/index.vue'
 
 export default {
   name: 'EmployeeList',
   // eslint-disable-next-line vue/no-unused-components
-  components: { FilenameOption, AutoWidthOption, BookTypeOption},
+  components: { UploadExcelComponent, FilenameOption, AutoWidthOption, BookTypeOption },
   data() {
     return {
       empList: [],
@@ -260,10 +304,10 @@ export default {
           }
         ],
         kwDepartment: [
-          {required: true, message: '请选择部门', trigger: 'change'}
+          { required: true, message: '请选择部门', trigger: 'change' }
         ],
         kwEmployeetype: [
-          {required: true, message: '请选择用户类型', trigger: 'change'}
+          { required: true, message: '请选择用户类型', trigger: 'change' }
         ]
       },
       multipleSelection: [],
@@ -274,7 +318,8 @@ export default {
       filename: '用户信息',
       autoWidth: true,
       bookType: 'xlsx',
-      downloadLoading: false
+      downloadLoading: false,
+      uploadVisible: false
     }
   },
   mounted() {
@@ -286,6 +331,88 @@ export default {
     this.getEmployeePage(this.pageNo, this.pageSize)
   },
   methods: {
+    // 批量导入
+    beforeUpload(file) {
+      const isLt1M = file.size / 1024 / 1024 < 1
+
+      if (isLt1M) {
+        return true
+      }
+
+      this.$message({
+        message: 'Please do not upload files larger than 1m in size.',
+        type: 'warning'
+      })
+      return false
+    },
+    uploadFile(file) {
+      const that = this
+      const formData = new FormData()
+      formData.append('file', file.file)
+      console.log(formData)
+      // console.log(file.file)
+      axios.post('http://localhost:8080/emp/batchUpload', formData, {
+        headers: {
+          'Authorization': 'Bearer ' + localStorage.getItem('token'),
+          'Content-Type': 'multipart/form-data'
+        }
+      }).then(res => {
+        // console.log(res)
+        if (res.data.code === '2000') {
+          that.$message({
+            message: '上传成功',
+            center: true,
+            type: 'success'
+          })
+          that.getEmployeePage(that.pageNo, that.pageSize)
+          that.uploadVisible = false
+        } else {
+          that.$message(res.data.msg)
+        }
+      })
+    },
+    // handleSuccess({ results }) {
+    //   // console.log(results)
+    //   const that = this
+    //   console.log(that.fileUp)
+    //   axios.post('localhost:8080/emp/batchUpload', {
+    //     params: {
+    //       file: that.fileUp
+    //     },
+    //     headers: {
+    //       'Content-Type': 'multipart/form-data'
+    //     }
+    //   }).then(res => {
+    //     // console.log(res)
+    //     if (res.data.code === '2000') {
+    //       that.$message({
+    //         message: '上传成功',
+    //         center: true,
+    //         type: 'success'
+    //       })
+    //       that.getEmployeePage(that.pageNo, that.pageSize)
+    //       that.uploadVisible = false
+    //     } else {
+    //       that.$message(res.data.msg)
+    //     }
+    //   })
+    // },
+    // handleSuccess(response) {
+    //   const that = this
+    //   // 处理成功返回结果
+    //   if (response.data.code === '2000') {
+    //     that.$message({
+    //       message: '上传成功',
+    //       center: true,
+    //       type: 'success'
+    //     })
+    //     that.getEmployeePage(that.pageNo, that.pageSize)
+    //     that.uploadVisible = false
+    //   } else {
+    //     that.$message(response.data.msg)
+    //   }
+    // },
+    // 批量导出
     handleDownload() {
       if (this.multipleSelection.length) {
         this.downloadLoading = true
@@ -377,7 +504,7 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             }
-          }).then(function (response) {
+          }).then(function(response) {
             if (response.data.code === '2000') {
               that.$message({
                 message: '修改成功',
@@ -405,7 +532,7 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             }
-          }).then(function (response) {
+          }).then(function(response) {
             if (response.data.code === '2000') {
               that.$message({
                 message: '添加成功',
@@ -430,7 +557,7 @@ export default {
     },
     getEmployeeTypes() {
       const that = this
-      axios.get('http://localhost:8080/empType/empTypeList').then(function (response) {
+      axios.get('http://localhost:8080/empType/empTypeList').then(function(response) {
         // console.log(response)
         if (response.data.code === '2000') {
           that.employeeTypeList = response.data.data
@@ -441,7 +568,7 @@ export default {
     },
     getDepartments() {
       const that = this
-      axios.get('http://localhost:8080/dept/deptList').then(function (response) {
+      axios.get('http://localhost:8080/dept/deptList').then(function(response) {
         if (response.data.code === '2000') {
           that.departmentList = response.data.data
         } else {
@@ -458,7 +585,7 @@ export default {
           pageNo: pn,
           pageSize: ps
         }
-      }).then(function (resp) {
+      }).then(function(resp) {
         that.empList = resp.data.data.list
         that.total = resp.data.data.total
         that.pages = resp.data.data.pages
@@ -488,7 +615,7 @@ export default {
           params: {
             kwEmpid: row.kwEmpid
           }
-        }).then(function (resp) {
+        }).then(function(resp) {
           // console.log(resp)
           if (resp.data.code === '2000') {
             that.$message({
